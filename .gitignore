@@ -1,0 +1,5 @@
+.DS_Store
+
+*.out
+lab1
+lab1_openmp
