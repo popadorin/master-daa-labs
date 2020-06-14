@@ -1,20 +1,73 @@
 // #include <stdio.h>
 // #include "mpi.h"
 
-// int main(int argc, char** argv)
+// #define number 10000000000
+
+// int getSum(int start, int end)
 // {
-//     int rank, size;
-//     char version[MPI_MAX_LIBRARY_VERSION_STRING];
+//     int sum = 0;
+//     for (int i = start; i < end; i++)
+//     {
+//         sum += i;
+//     }
+//     return sum;
+// }
+
+// int main(int argc, char *argv[])
+// {
+//     MPI_Status status;
+//     int pid, numberOfProcesses;
 
 //     MPI_Init(&argc, &argv);
-//     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//     MPI_Comm_size(MPI_COMM_WORLD, &size);
-//     printf("Hello, world, I am %d of %d\n",
-//            rank, size);
+//     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+//     MPI_Comm_size(MPI_COMM_WORLD, &numberOfProcesses);
+
+//     if (pid == 0)
+//     {
+//         int r = number / numberOfProcesses;
+//         int id, start, end;
+
+//         if (numberOfProcesses > 1)
+//         {
+//             int rest = number % numberOfProcesses;
+//             int missed = 0;
+//             for (int id = 1; id < numberOfProcesses; id++)
+//             {
+//                 start = r * id;
+//                 if ((rest != 0) && (id == numberOfProcesses - 1))
+//                 {
+//                     missed = rest;
+//                 }
+//                 end = start + r + missed;
+//                 MPI_Send(&start, 1, MPI_INT, id, 0, MPI_COMM_WORLD);
+//                 MPI_Send(&end, 1, MPI_INT, id, 0, MPI_COMM_WORLD);
+//             }
+//         }
+
+//         int sum = getSum(0, r);
+//         int tmp;
+//         for (int i = 1; i < numberOfProcesses; i++)
+//         {
+//             MPI_Recv(&tmp, 1, MPI_INT,MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+//             sum += tmp;
+//         }
+//         printf("Sum = %d\n", sum);
+//     }
+//     else
+//     {
+//         int start, end;
+//         MPI_Recv(&start, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+//         MPI_Recv(&end, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+
+//         int partial_sum = getSum(start, end);
+//         MPI_Send(&partial_sum, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+//     }
+
 //     MPI_Finalize();
 
 //     return 0;
 // }
+// -----------------------------------------------------------------------------
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -133,6 +186,7 @@ void print_incorrect_arguments_message_and_exit(char *app_name)
 {
     printf("Unexpected number of arguments \n");
     printf("Call application %s with arguments [sleepy|busy] and number of threads [1..32] as the powers of 2.\n", app_name);
+    MPI_Finalize();
     exit(0);
 }
 
@@ -153,70 +207,111 @@ void setOutput(int start, int end, int *input, long *output, int sleepy_mode)
 
 int main(int argc, char *argv[])
 {
-    char *app_name = argv[0];
-    if (argc < 2)
-    {
-        printf("Call application %s with arguments [sleepy|busy].\n", app_name);
-        printf("Application will read input.txt file and will compute the Fibonacci number of the read position.\n");
-        printf("Example:\n");
-        printf("%s sleepy -- Computation will be slowed down by using sleep instructions.\n", app_name);
-        printf("%s busy -- Computation will be slowed down by keeping CPU busy.\n", app_name);
-
-        exit(0);
-    }
-    if (argc > 2)
-    {
-        print_incorrect_arguments_message_and_exit(app_name);
-    }
-    int sleepy_mode = 1;
-    if (strcmp(argv[1], "sleepy") == 0)
-    {
-        sleepy_mode = 1;
-    }
-    else if (strcmp(argv[1], "busy") == 0)
-    {
-        sleepy_mode = 0;
-    }
-    else
-    {
-        printf("----\n");
-        print_incorrect_arguments_message_and_exit(app_name);
-    }
-    if (sleepy_mode == 1)
-    {
-        printf("Computing Fibonacci numbers using Sleepy Mode computation.\n");
-    }
-    else
-    {
-        printf("Computing Fibonacci numbers using Busy Mode computation.\n");
-    }
-    char *input_file_name = "input.txt";
-    char *output_file_name = "output.txt";
-    int input_numbers[MAX_INPUT_SIZE];
-    long output_numbers[MAX_INPUT_SIZE];
-
-    int line_count = read_fibonacci_numbers(input_file_name, input_numbers);
-
+    MPI_Status status;
     int numberOfProcesses;
     int processId;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &processId);
     MPI_Comm_size(MPI_COMM_WORLD, &numberOfProcesses);
 
-    int linesPerThread = line_count / numberOfProcesses;
-    int rest = line_count % numberOfProcesses;
+    if (processId == 0)
+    { // master process
+        char *app_name = argv[0];
+        if (argc < 2)
+        {
+            printf("Call application %s with arguments [sleepy|busy].\n", app_name);
+            printf("Application will read input.txt file and will compute the Fibonacci number of the read position.\n");
+            printf("Example:\n");
+            printf("%s sleepy -- Computation will be slowed down by using sleep instructions.\n", app_name);
+            printf("%s busy -- Computation will be slowed down by keeping CPU busy.\n", app_name);
 
-    int start = linesPerThread * processId;
-    int missed = 0;
-    if ((rest != 0) && (processId == numberOfProcesses - 1))
-    {
-        missed = rest;
+            exit(0);
+        }
+        if (argc > 2)
+        {
+            print_incorrect_arguments_message_and_exit(app_name);
+        }
+        int sleepy_mode = 1;
+        if (strcmp(argv[1], "sleepy") == 0)
+        {
+            sleepy_mode = 1;
+        }
+        else if (strcmp(argv[1], "busy") == 0)
+        {
+            sleepy_mode = 0;
+        }
+        else
+        {
+            printf("----\n");
+            print_incorrect_arguments_message_and_exit(app_name);
+        }
+        if (sleepy_mode == 1)
+        {
+            printf("Computing Fibonacci numbers using Sleepy Mode computation.\n");
+        }
+        else
+        {
+            printf("Computing Fibonacci numbers using Busy Mode computation.\n");
+        }
+
+        char *input_file_name = "input.txt";
+        char *output_file_name = "output.txt";
+        int input_numbers[MAX_INPUT_SIZE];
+
+        int line_count = read_fibonacci_numbers(input_file_name, input_numbers);
+
+        int linesPerProcess = line_count / numberOfProcesses;
+        if (numberOfProcesses > 1)
+        {
+            int rest = line_count % numberOfProcesses;
+            int missed = 0;
+            for (int id = 1; id < numberOfProcesses; id++)
+            {
+                int start = linesPerProcess * id;
+                if ((rest != 0) && (id == numberOfProcesses - 1))
+                {
+                    missed = rest;
+                }
+                int end = start + linesPerProcess + missed;
+                MPI_Send(&start, 1, MPI_INT, id, 0, MPI_COMM_WORLD);
+                MPI_Send(&end, 1, MPI_INT, id, 0, MPI_COMM_WORLD);
+                MPI_Send(&input_numbers, MAX_INPUT_SIZE, MPI_INT, id, 0, MPI_COMM_WORLD);
+                MPI_Send(&sleepy_mode, 1, MPI_INT, id, 0, MPI_COMM_WORLD);
+            }
+        }
+        long output_numbers[MAX_INPUT_SIZE];
+        setOutput(0, linesPerProcess, input_numbers, output_numbers, sleepy_mode);
+
+        int partialStart, partialEnd;
+        long* partialFilledOutput;
+        for (int i = 1; i < numberOfProcesses; i++)
+        {
+            MPI_Recv(&partialFilledOutput, MAX_INPUT_SIZE, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+            MPI_Recv(&partialStart, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+            MPI_Recv(&partialEnd, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+            for (int k = partialStart; k < partialEnd; k++)
+            {
+                output_numbers[k] = partialFilledOutput[k];
+            }
+        }
+
+        write_fibonacci_numbers(output_file_name, output_numbers, line_count);
+        printf("\n");
     }
-    int end = start + linesPerThread + missed;
-    setOutput(start, end, input_numbers, output_numbers, sleepy_mode);
+    else
+    { // slave process
+        int start, end, *input_numbers, sleepy_mode;
+        MPI_Recv(&start, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+        MPI_Recv(&end, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+        MPI_Recv(&input_numbers, MAX_INPUT_SIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+        MPI_Recv(&sleepy_mode, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
 
+        long output_numbers[MAX_INPUT_SIZE];
+
+        setOutput(start, end, input_numbers, output_numbers, sleepy_mode);
+        MPI_Send(&output_numbers, MAX_INPUT_SIZE, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        MPI_Send(&start, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        MPI_Send(&end, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+    }
     MPI_Finalize();
-
-    write_fibonacci_numbers(output_file_name, output_numbers, line_count);
-    printf("\n");
 }
