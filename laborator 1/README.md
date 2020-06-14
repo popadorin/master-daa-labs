@@ -18,5 +18,9 @@ Cu Open**MP**
 Cu Open**MPI**
 | Număr fire | 1 | 2 | 4 | 8 | 16 | 32 |
 | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
-| Sleepy(s) | 12 | 6.33 |  | | | |
-| Busy(s) | 10 | | | | | |
+| Sleepy(s) | 23.81 | |  | | | |
+| Busy(s) | 11.67 | | | | | |
+
+
+#### Consideratii
+Dupa timpii de executie cu ajutorul la OpenMP observat ca este de ajuns 16 fire de executie pentru a atinge timpul minim. Plus logica de separare a numerelor per fir de executie putea fi linear descrescator din cauza ca ultimile numere necesita mai mult timp pentru a fi executate, dar aceasta din urma nu a fost luata in consideratie.
