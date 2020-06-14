@@ -114,7 +114,7 @@ void write_fibonacci_numbers(char *file_name, long *c, int num_records)
 void print_incorrect_arguments_message_and_exit(char *app_name)
 {
   printf("Unexpected number of arguments \n");
-  printf("Call application %s with arguments [sleepy|busy] and number of threads [1..32].\n", app_name);
+  printf("Call application %s with arguments [sleepy|busy] and number of threads [1..32] as the powers of 2.\n", app_name);
   exit(0);
 }
 
