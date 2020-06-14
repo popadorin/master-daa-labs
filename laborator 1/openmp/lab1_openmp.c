@@ -188,12 +188,17 @@ int main(int argc, char *argv[])
   int line_count = read_fibonacci_numbers(input_file_name, input_numbers);
 
   int linesPerThread = line_count / numberOfThreads;
+  int rest = line_count % numberOfThreads;
   int threadId;
 #pragma omp parallel for
   for (threadId = 0; threadId < numberOfThreads; threadId++)
   {
     int start = linesPerThread * threadId;
-    int end = start + linesPerThread;
+    int missed = 0;
+    if ((rest != 0) && (threadId == numberOfThreads - 1)) {
+      missed = rest;
+    }
+    int end = start + linesPerThread + missed;
     setOutput(start, end, input_numbers, output_numbers, sleepy_mode);
   }
 
