@@ -3,4 +3,5 @@
 *.out
 lab1
 lab1_openmp
+lab1_openmpi
 output.txt
