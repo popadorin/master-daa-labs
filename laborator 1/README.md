@@ -4,6 +4,8 @@
   - Sleepy: 12.661 s  
   - Busy: 10.641 s
 
+__Numarul de nuclee pe calculator - **6**__
+
 ##### Timpii de execuţie a aplicaţiei scrise
 
 Cu Open**MP**
